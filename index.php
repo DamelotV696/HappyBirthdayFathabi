@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S.H. | Absolute Silence</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');
+
+        :root {
+            --mask-x: 50%;
+            --mask-y: 50%;
+            --light-radius: 150px;
+        }
+
+        body {
+            background: #000;
+            color: #444;
+            font-family: 'Special Elite', serif;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #flashlight-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle var(--light-radius) at var(--mask-x) var(--mask-y), rgba(255, 255, 235, 0.12) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            background: #050505;
+            -webkit-mask-image: radial-gradient(circle var(--light-radius) at var(--mask-x) var(--mask-y), rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 80%);
+            mask-image: radial-gradient(circle var(--light-radius) at var(--mask-x) var(--mask-y), rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 80%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+
+        #game-container.light-on {
+            -webkit-mask-image: none !important;
+            mask-image: none !important;
+            background: #121210;
+        }
+
+        #lamp-holder {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            z-index: 500;
+        }
+
+        .bulb {
+            width: 46px;
+            height: 55px;
+            background: rgba(20, 20, 20, 0.95);
+            border-radius: 50% 50% 45% 45%;
+            position: relative;
+            border: 2px solid #111;
+            margin: 0 auto;
+            transition: background 0.05s, box-shadow 0.05s;
+        }
+
+        .bulb.active {
+            background: #ffcc00 !important;
+            border-color: #ffeb3b !important;
+            box-shadow: 0 0 120px 40px rgba(255, 204, 0, 0.4), inset 0 0 20px #fff !important;
+        }
+
+        .pull-chain {
+            width: 3px;
+            height: 180px;
+            background: linear-gradient(to bottom, #111, #333);
+            margin: 0 auto;
+            position: relative;
+            cursor: pointer;
+            transform-origin: top;
+        }
+
+        .pull-chain::after {
+            content: "";
+            position: absolute;
+            bottom: -12px;
+            left: -5px;
+            width: 13px;
+            height: 13px;
+            background: #444;
+            border-radius: 50%;
+        }
+
+        .interface {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+        }
+
+        .riddle-box {
+            color: #555;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        .light-on .riddle-box {
+            color: #887;
+            text-shadow: none;
+        }
+
+        .hidden-hint {
+            position: absolute;
+            color: #554;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+         #hint-pos-0 {
+            top: 15%;
+            left: -15%;
+        }
+
+        #hint-pos-1 {
+            bottom: 15%;
+            right: 10%;
+        }
+
+        #hint-pos-2 {
+            top: 30%;
+            right: -35%;
+        }
+
+        .seals-container {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin: 40px 0;
+        }
+
+        .seal-circle {
+            width: 110px;
+            height: 110px;
+            border: 2px solid #221;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            color: #400;
+            cursor: pointer;
+            background: rgba(10, 0, 0, 0.3);
+            transition: 0.3s;
+            box-shadow: inset 0 0 20px #000;
+        }
+
+        .seal-circle:hover {
+            border-color: #600;
+            color: #800;
+        }
+
+        .decode-table {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px auto;
+            opacity: 0;
+            transition: opacity 2s ease;
+            max-width: 600px;
+        }
+
+        .light-on .decode-table { opacity: 0.7; }
+
+        .table-item { border: 1px solid #222; padding: 10px; font-size: 0.9rem; color: #665; }
+
+        .flip-clock { display: flex; justify-content: center; gap: 20px; margin-bottom: 30px; }
+        .flip-unit { display: flex; flex-direction: column; align-items: center; }
+        .flip-card {
+            background: #111; border: 2px solid #222; color: #500; font-size: 4rem;
+            padding: 10px 20px; border-radius: 8px; min-width: 100px;
+            text-shadow: 0 0 10px #300; position: relative; overflow: hidden;
+        }
+        .flip-card::after { content: ""; position: absolute; left: 0; top: 50%; width: 100%; height: 2px; background: #000; }
+
+        .nav-arrow { background: none; border: none; color: #333; font-size: 2rem; cursor: pointer; transition: 0.2s; padding: 5px; }
+        .nav-arrow:hover { color: #800; transform: scale(1.2); }
+
+        .slots-container { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+        .slot { width: 105px; height: 145px; border: 1px solid #1a1a1a; background: rgba(10, 10, 10, 0.8); display: flex; align-items: center; justify-content: center; }
+        .card { width: 95px; height: 135px; background: #111; border: 1px solid #222; color: #666; display: flex; align-items: center; justify-content: center; cursor: grab; font-size: 0.8rem; text-transform: uppercase; text-align: center; }
+
+        .inventory { min-height: 160px; margin-top: 40px; border-top: 1px solid #151515; display: flex; gap: 20px; justify-content: center; align-items: center; }
+
+        .action-btn { background: none; border: 1px solid #300; color: #500; padding: 10px 30px; margin-top: 30px; transition: 0.3s; }
+        .action-btn:hover { background: #500; color: #fff; }
+
+        input[type="text"] { background: transparent; border: none; border-bottom: 2px solid #222; color: #600; text-align: center; font-size: 2rem; outline: none; width: 400px; margin-top: 20px; }
+
+        .noise-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: url('https://upload.wikimedia.org/wikipedia/commons/7/76/1k_Filtered_Noise.png'); opacity: 0.05; pointer-events: none; z-index: 150; }
+
+        /* Финальные стили */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .victory-screen { animation: fadeIn 3s ease; max-width: 750px; margin: 0 auto; }
+        .steam-keys div { user-select: text; cursor: text; }
+    </style>
+</head>
+
+<body>
+
+    <div id="flashlight-glow"></div>
+    <div class="noise-overlay"></div>
+
+    <div id="game-container">
+        <div id="lamp-holder">
+            <div id="main-bulb" class="bulb"></div>
+            <div class="pull-chain" onclick="toggleLamp()"></div>
+        </div>
+        <div id="main-ui" class="interface"></div>
+    </div>
+
+    <script>
+        let clockTime = { h: 0, m: 0 };
+        let isLampOn = false;
+        let lampTimer = null;
+        let sealValues = [0, 0, 0];
+        let currentStep = parseInt(localStorage.getItem('sh_progress')) || 0;
+
+        const levels = [
+            {
+                id: 1,
+                type: 'flip-clock',
+                riddle: "Старик завел механизм, запертый в железном коробе.\nПервый затвор падет, когда солнце уйдет за левый край мира,\nоставив лишь два шага до полуночной бездны.\nВторой затвор ждет, когда тяжелый маятник отсчитает \nвосемь полных кругов по пять вздохов в каждом.",
+                answer: { h: 10, m: 40 }
+            },
+            {
+                id: 2,
+                type: 'cards',
+                riddle: "Шесть пустых надежд у длинного стола.\nШут не смеет занять первый трон, он прячется в тени предателя,\nкоторый вообще отказался прийти, оставив по левую руку лишь пыль.\nДама ждет того, кто ей дорог, и её место — предпоследний вздох.\nОна не коснется края, пока за её спиной не встанет тот,\nкто прошел через три пустые залы, чтобы войти в эту дверь последним.",
+                cards: ['Шут', 'Юноша', 'Дама'],
+                answer: ['empty', 'Шут', 'empty', 'empty', 'Дама', 'Юноша']
+            },
+            {
+                id: 3,
+                type: 'signal',
+                riddle: "Маленький мальчик в пустой комнате. Ему всего 6 лет, но его голос звучит тише шепота.\nОн прячется за стеклом лампы и общается с тобой ритмом своего страха.\n\nЗапомни: ему 6 лет. Сейчас это просто цифра.\nСмотри на свет. Считай, сколько раз он вздрогнет. Пауза — это конец слова.",
+                sequence: [2, 5, 6],
+                table: [
+                    { n: 1, word: "ТЕНЬ" }, { n: 2, word: "КРИК" }, { n: 3, word: "ПРАХ" },
+                    { n: 4, word: "ОТЕЦ" }, { n: 5, word: "КУКЛА" }, { n: 6, word: "МАМА" }
+                ],
+                answer: "криккукламама"
+            },
+            {
+                id: 4,
+                type: 'seals',
+                riddle: "Дама выходит из тени. Она не пишет писем, она связывает узлы.\n«Чтобы открыть барабан, ты должен вспомнить каждого, кто был здесь до меня».\n\nТот, кто лишен трона, всё ещё прячется в тени предателя, храня число своего укрытия. \nСтарик замер, когда железное сердце захлебнулось в последнем такте — отыщи этот час, \nзастывший в вечности. А Дитя всё шепчет из-за стекла; его годы — лишь тихий ритм \nв темноте, не успевший стать долгим путем.\n\nСобери их тени воедино, прежде чем свинец найдет свой дом.",
+                answer: "2106"
+            },
+            {
+                id: 5,
+                type: 'text',
+                riddle: "В этом зале пахнет старым вином и несбывшимся завтра.\nЯ смотрю на них — тени, застывшие в янтаре мгновения, где я лишь последний свидетель.\n\nВеликая Тьма накрыла нас в момент, когда двойное острие пронзило небо,\nуказав на черную бездну, где один цикл умирает, а другой еще не сделал вздоха.\nВ этой точке невозврата мы нашли свой вечный покой.\n\nВзгляни на Старика. Его время истекло первым, когда сталь нашла его сердце.\nОн больше не властен над часами, и его песок рассыпался в прах.\n\nСледом замер Юноша. Тот, кто мог созидать, теперь бездвижен.\nЕго ладони раскрыты, обнажая совершенство двух живых машин — \nвесь стройный ряд костяных рычагов, что когда-то ласкали жизнь,\nтеперь они лишь немой счет в моей памяти.\n\nЗатем умолкло Дитя. В его остывающем смехе скрыт первый дар природы,\nтот самый фарфоровый частокол, что дается нам прежде, чем в мир придет коренное горе.\nМаленькие жемчужины в храме плоти, не познавшие перемены.\n\nМой «Леди» хранит в себе семь секретов тишины. \nТрое ушли до меня, и один секрет я раскрыла для своего последнего вздоха.\nКруг замкнулся. Свинец нашел свой дом.\n\nПочувствуй, что осталось дремать в холодном покое барабана,\nкогда последняя искра покинула мои глаза.\nМой прощальный подарок.",
+                answer: "1210203"
+            }
+        ];
+
+        function initLevel() {
+            const level = levels[currentStep];
+            const ui = document.getElementById('main-ui');
+            const lamp = document.getElementById('lamp-holder');
+            const container = document.getElementById('game-container');
+            const flash = document.getElementById('flashlight-glow');
+
+            stopLampSignal();
+            
+            if (!level) {
+                // ФИНАЛ: ТУМАН РАССЕЯЛСЯ
+                container.classList.add('light-on');
+                flash.style.display = 'none';
+                ui.innerHTML = `
+                    <div class="victory-screen">
+                        <h1 style="color: #800; font-size: 3.5rem; margin-bottom: 20px; text-shadow: 0 0 15px rgba(128,0,0,0.5);">
+                            ТУМАН РАССЕЯЛСЯ
+                        </h1>
+                        <div style="color: #777; font-size: 1.4rem; margin: 30px 0; line-height: 1.8;">
+                            <p>Ты прошел через все тени и узлы. Тишина больше не властна над этим местом.</p>
+                            <h2 style="color: #600; margin-top: 40px;">С ДНЁМ РОЖДЕНИЯ!</h2>
+                            <p>Пусть в твоей жизни будет меньше тумана и больше верных путей.</p>
+                        </div>
+                        <button class="action-btn" style="margin-top: 40px;" onclick="resetGame()">Начать заново</button>
+                    </div>`;
+                return;
+            }
+
+            container.classList.remove('light-on');
+            flash.style.display = 'block';
+            isLampOn = false;
+            lamp.style.display = (level.id === 3) ? 'block' : 'none';
+
+            if (level.type === 'signal') {
+                ui.innerHTML = `<div class="riddle-box">${level.riddle}</div><div class="decode-table">${level.table.map(i => `<div class="table-item">${i.n} — ${i.word}</div>`).join('')}</div>`;
+                renderTextInput(ui);
+            } else if (level.type === 'seals') {
+                ui.innerHTML = `<div class="riddle-box">${level.riddle}</div>
+                    <div id="hint-pos-0" class="hidden-hint">Трон Шута</div>
+                    <div id="hint-pos-1" class="hidden-hint">Час Старика</div>
+                    <div id="hint-pos-2" class="hidden-hint">Года Дитя</div>
+                    <div class="seals-container">${[0, 1, 2].map(i => `<div class="seal-circle" id="seal-${i}" onclick="rotateSeal(${i})">${sealValues[i]}</div>`).join('')}</div>
+                    <button class="action-btn" onclick="checkSeals()">Разрезать узлы</button>`;
+            } else {
+                ui.innerHTML = `<div class="riddle-box">${level.riddle}</div>`;
+                if (level.type === 'flip-clock') renderFlipClock(ui);
+                else if (level.type === 'cards') renderCards(ui, level);
+                else renderTextInput(ui);
+            }
+        }
+
+        function renderFlipClock(ui) {
+            ui.innerHTML += `<div class="flip-clock"><div class="flip-unit"><button class="nav-arrow" onclick="updateTime('h', 1)">▲</button><div class="flip-card" id="hour-val">00</div><button class="nav-arrow" onclick="updateTime('h', -1)">▼</button></div><div style="font-size: 4rem; color: #222; padding-top: 45px;">:</div><div class="flip-unit"><button class="nav-arrow" onclick="updateTime('m', 5)">▲</button><div class="flip-card" id="min-val">00</div><button class="nav-arrow" onclick="updateTime('m', -5)">▼</button></div></div><button class="action-btn" onclick="checkFlipAnswer()">Спустить курок</button>`;
+            updateClockDisplay();
+        }
+
+        function renderCards(ui, level) {
+            ui.innerHTML += `<div class="slots-container">${[0,1,2,3,4,5].map(i => `<div class="slot" ondrop="drop(event)" ondragover="allowDrop(event)"></div>`).join('')}</div><div class="inventory" id="inventory" ondrop="drop(event)" ondragover="allowDrop(event)">${level.cards.map(c => `<div class="card" draggable="true" ondragstart="drag(event)" id="${c}">${c}</div>`).join('')}</div><button class="action-btn" onclick="checkCards()">Сверить судьбы</button>`;
+        }
+
+        function updateTime(unit, val) {
+            if (unit === 'h') clockTime.h = (clockTime.h + val + 24) % 24;
+            else clockTime.m = (clockTime.m + val + 60) % 60;
+            updateClockDisplay();
+        }
+
+        function updateClockDisplay() {
+            const h = document.getElementById('hour-val'), m = document.getElementById('min-val');
+            if (h) h.innerText = String(clockTime.h).padStart(2, '0');
+            if (m) m.innerText = String(clockTime.m).padStart(2, '0');
+        }
+
+        function rotateSeal(i) {
+            sealValues[i] = (sealValues[i] + 1) % 12;
+            document.getElementById(`seal-${i}`).innerText = sealValues[i];
+        }
+
+        function checkSeals() {
+            if (sealValues.join('') === levels[currentStep].answer) nextLevel();
+            else failEffect();
+        }
+
+        function toggleLamp() {
+            isLampOn = !isLampOn;
+            const container = document.getElementById('game-container'), flash = document.getElementById('flashlight-glow'), bulb = document.getElementById('main-bulb');
+            if (isLampOn) {
+                container.classList.add('light-on'); flash.style.display = 'none'; startLampSignal();
+            } else {
+                container.classList.remove('light-on'); flash.style.display = 'block'; stopLampSignal(); bulb.classList.remove('active');
+            }
+        }
+
+        function startLampSignal() {
+            const level = levels[currentStep];
+            if (level.type !== 'signal') return;
+            let idx = 0, count = 0;
+            const bulb = document.getElementById('main-bulb');
+            function run() {
+                if (!isLampOn) return;
+                if (count < level.sequence[idx]) {
+                    bulb.classList.add('active');
+                    setTimeout(() => { bulb.classList.remove('active'); count++; lampTimer = setTimeout(run, 400); }, 300);
+                } else {
+                    count = 0; idx = (idx + 1) % level.sequence.length; lampTimer = setTimeout(run, 2000);
+                }
+            }
+            run();
+        }
+
+        function stopLampSignal() { clearTimeout(lampTimer); }
+
+        function renderTextInput(ui) {
+            const input = document.createElement('input');
+            input.type = 'text'; input.placeholder = "...";
+            input.onkeypress = (e) => { if (e.key === 'Enter') checkText(input.value); };
+            ui.appendChild(input);
+            setTimeout(() => input.focus(), 100);
+        }
+
+        function checkText(val) {
+            if (val.toLowerCase().replace(/\s+/g, '') === levels[currentStep].answer) nextLevel();
+            else failEffect();
+        }
+
+        function checkFlipAnswer() {
+            if (clockTime.h === levels[currentStep].answer.h && clockTime.m === levels[currentStep].answer.m) nextLevel();
+            else failEffect();
+        }
+
+        function checkCards() {
+            const cur = Array.from(document.querySelectorAll('.slot')).map(s => s.firstChild ? s.firstChild.id : 'empty');
+            if (JSON.stringify(cur) === JSON.stringify(levels[currentStep].answer)) nextLevel();
+            else failEffect();
+        }
+
+        window.allowDrop = (ev) => ev.preventDefault();
+        window.drag = (ev) => ev.dataTransfer.setData("text", ev.target.id);
+        window.drop = (ev) => {
+            ev.preventDefault();
+            const data = ev.dataTransfer.getData("text");
+            const el = document.getElementById(data);
+            if (ev.target.classList.contains('slot') || ev.target.id === 'inventory') ev.target.appendChild(el);
+        };
+
+        function nextLevel() {
+            currentStep++;
+            localStorage.setItem('sh_progress', currentStep);
+            initLevel();
+        }
+
+        function failEffect() {
+            document.body.style.background = "#200";
+            setTimeout(() => document.body.style.background = "#000", 150);
+        }
+
+        function resetGame() {
+            localStorage.clear();
+            currentStep = 0;
+            sealValues = [0,0,0];
+            clockTime = {h:0, m:0};
+            initLevel();
+        }
+
+        document.addEventListener('mousemove', e => {
+            document.body.style.setProperty('--mask-x', e.clientX + 'px');
+            document.body.style.setProperty('--mask-y', e.clientY + 'px');
+            if (levels[currentStep]?.type === 'seals') {
+                document.querySelectorAll('.hidden-hint').forEach(hint => {
+                    const rect = hint.getBoundingClientRect();
+                    const dist = Math.hypot(e.clientX - (rect.left + rect.width / 2), e.clientY - (rect.top + rect.height / 2));
+                    hint.style.opacity = dist < 150 ? (1 - dist / 150) * 0.7 : 0;
+                });
+            }
+        });
+
+        initLevel();
+    </script>
+</body>
+
+</html>
